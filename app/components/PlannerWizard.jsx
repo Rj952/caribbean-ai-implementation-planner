@@ -10,6 +10,7 @@ import {
 import {
   COUNTRIES, COUNTRY_LIST, PRINCIPLES, GDP_SECTORS, COMMITMENTS, SUGGESTED_RISKS
 } from '@/lib/data';
+import { streamClaude } from '@/lib/claude-client';
 import { generateMarkdown } from '@/lib/document-generator';
 import { exportDocx } from '@/lib/docx-generator';
 import { exportPdf } from '@/lib/pdf-generator';
@@ -369,6 +370,12 @@ function StepVision({ data, updateField }) {
       <div className="space-y-5">
         <Field label="Vision Statement" htmlFor="f-vision">
           <textarea id="f-vision" value={data.vision} onChange={e => updateField('vision', e.target.value)} rows={5} placeholder="By 2031, [country] will have established a sovereign, inclusive AI ecosystem that..." />
+          <ClaudeSuggestButton
+            field="Vision Statement"
+            data={data}
+            existing={data.vision}
+            onAccept={txt => updateField('vision', txt)}
+          />
         </Field>
         <fieldset>
           <legend className="font-mono text-xs uppercase tracking-wider block mb-2 text-cb-mute">Strategic Priorities (up to 3)</legend>
@@ -387,9 +394,26 @@ function StepVision({ data, updateField }) {
               className="mb-3"
             />
           ))}
+          <ClaudeSuggestButton
+            field="Strategic Priorities"
+            data={data}
+            existing={data.priorities.filter(Boolean).join('\n')}
+            onAccept={txt => {
+              const lines = txt.split(/\n+/).map(l => l.replace(/^[-*\d.\s]+/, '').trim()).filter(Boolean).slice(0, 3);
+              const next = ['', '', ''];
+              lines.forEach((l, i) => { if (i < 3) next[i] = l; });
+              updateField('priorities', next);
+            }}
+          />
         </fieldset>
         <Field label="Cultural & Moral Anchors" htmlFor="f-anchors">
           <textarea id="f-anchors" value={data.anchors} onChange={e => updateField('anchors', e.target.value)} rows={3} placeholder="e.g. CARICOM Charter of Civil Society; reparations advocacy; climate-justice leadership; Indigenous Peoples' rights" />
+          <ClaudeSuggestButton
+            field="Cultural & Moral Anchors"
+            data={data}
+            existing={data.anchors}
+            onAccept={txt => updateField('anchors', txt)}
+          />
         </Field>
       </div>
     </section>
@@ -802,5 +826,105 @@ function StepGenerate({ data, docText, showOutput, setShowOutput, copied, copyDo
         </div>
       )}
     </section>
+  );
+}
+
+
+// =====================================================================
+// Claude AI suggestion button
+// =====================================================================
+
+function ClaudeSuggestButton({ field, data, existing, onAccept }) {
+  const [streaming, setStreaming] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [err, setErr] = useState('');
+
+  const run = async () => {
+    setErr('');
+    setDraft('');
+    setStreaming(true);
+    try {
+      const ctx = {
+        country: data.country,
+        countryName: data.country,
+        population: data.population,
+        languages: data.languages,
+        priorities: (data.priorities || []).filter(Boolean).join('; '),
+        sectors: (data.gdpSectors || []).join(', '),
+      };
+      await streamClaude(
+        { mode: 'draft', field, context: ctx, existingText: existing || '' },
+        (_chunk, full) => setDraft(full),
+      );
+    } catch (e) {
+      setErr(e.message || 'Suggestion failed.');
+    } finally {
+      setStreaming(false);
+    }
+  };
+
+  return (
+    <div className="mt-2">
+      <button
+        type="button"
+        onClick={run}
+        disabled={streaming}
+        className="btn btn-secondary"
+        style={{ minHeight: '34px', padding: '5px 12px', fontSize: '13px' }}
+        aria-busy={streaming}
+      >
+        {streaming ? (
+          <>
+            <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+            Drafting…
+          </>
+        ) : (
+          <>
+            <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+            Suggest with Claude
+          </>
+        )}
+      </button>
+      {err && (
+        <div className="font-body text-sm text-cb-red mt-2" role="alert">{err}</div>
+      )}
+      {draft && (
+        <div className="mt-2">
+          <div
+            className="font-body text-cb-ink leading-relaxed"
+            aria-live="polite"
+            style={{
+              fontSize: '14px',
+              background: 'var(--jm-green-soft)',
+              padding: '12px 14px',
+              borderLeft: '3px solid var(--jm-green)',
+              whiteSpace: 'pre-wrap',
+            }}
+          >
+            {draft}
+          </div>
+          {!streaming && (
+            <div className="flex gap-2 mt-2">
+              <button
+                type="button"
+                onClick={() => { onAccept(draft); setDraft(''); }}
+                className="btn btn-primary"
+                style={{ minHeight: '32px', padding: '4px 12px', fontSize: '12px' }}
+              >
+                Use this draft
+              </button>
+              <button
+                type="button"
+                onClick={() => setDraft('')}
+                className="btn btn-secondary"
+                style={{ minHeight: '32px', padding: '4px 12px', fontSize: '12px' }}
+              >
+                Discard
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

@@ -11,6 +11,7 @@ import { evaluatePlan } from '@/lib/plan-evaluator';
 import { exportEvaluationDocx } from '@/lib/docx-generator';
 import { exportEvaluationPdf } from '@/lib/pdf-generator';
 import { Callout, StepHeader } from './FormHelpers';
+import { streamClaude } from '@/lib/claude-client';
 
 const ACCEPT =
   '.docx,.pdf,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown';
@@ -20,6 +21,7 @@ export default function PlanEvaluator() {
   const [stage, setStage] = useState('idle'); // idle | reading | evaluating | done | error
   const [error, setError] = useState('');
   const [report, setReport] = useState(null);
+  const [planText, setPlanText] = useState('');
   const [pasteMode, setPasteMode] = useState(false);
   const [pastedText, setPastedText] = useState('');
   const [exporting, setExporting] = useState(null);
@@ -42,6 +44,7 @@ export default function PlanEvaluator() {
       setStage('evaluating');
       await new Promise(r => setTimeout(r, 350));
       const r = evaluatePlan(text, { sourceName: f.name, wordCount: words });
+      setPlanText(text);
       setReport(r);
       setStage('done');
     } catch (e) {
@@ -61,6 +64,7 @@ export default function PlanEvaluator() {
     setTimeout(() => {
       const wc = (pastedText.trim().match(/\S+/g) || []).length;
       const r = evaluatePlan(pastedText, { sourceName: 'Pasted text', wordCount: wc });
+      setPlanText(pastedText);
       setReport(r);
       setStage('done');
     }, 350);
@@ -76,6 +80,7 @@ export default function PlanEvaluator() {
   const reset = () => {
     setFile(null);
     setReport(null);
+    setPlanText('');
     setStage('idle');
     setError('');
     setPastedText('');
@@ -167,6 +172,7 @@ export default function PlanEvaluator() {
       {stage === 'done' && report && (
         <ReportView
           report={report}
+          planText={planText}
           openSection={openSection}
           setOpenSection={setOpenSection}
           onReset={reset}
@@ -288,7 +294,7 @@ function UploadPanel({
 // ---------------------------------------------------------------------------
 // Report view
 // ---------------------------------------------------------------------------
-function ReportView({ report, openSection, setOpenSection, onReset, onDocx, onPdf, exporting }) {
+function ReportView({ report, planText, openSection, setOpenSection, onReset, onDocx, onPdf, exporting }) {
   const ringColor =
     report.overall.score >= 75
       ? 'var(--cb-palm)'
@@ -388,6 +394,9 @@ function ReportView({ report, openSection, setOpenSection, onReset, onDocx, onPd
         </div>
       </section>
 
+      {/* Claude AI evaluation */}
+      <ClaudeEvaluationPanel report={report} planText={planText} />
+
       {/* Action Plan */}
       <section aria-labelledby="section-actions">
         <h3 id="section-actions" className="font-display text-cb-sea mb-2" style={{ fontSize: '24px', fontWeight: 600 }}>
@@ -403,7 +412,7 @@ function ReportView({ report, openSection, setOpenSection, onReset, onDocx, onPd
         ) : (
           <div className="space-y-4">
             {report.actions.map((a, i) => (
-              <ActionCard key={i} index={i + 1} action={a} />
+              <ActionCard key={i} index={i + 1} action={a} planText={planText} />
             ))}
           </div>
         )}
@@ -542,7 +551,7 @@ function SectionRow({ section, isOpen, onToggle }) {
   );
 }
 
-function ActionCard({ index, action }) {
+function ActionCard({ index, action, planText }) {
   return (
     <article className="principle-card">
       <div className="flex items-start justify-between gap-3 flex-wrap mb-2">
@@ -583,6 +592,290 @@ function ActionCard({ index, action }) {
           </li>
         ))}
       </ol>
+
+      <ClaudeAmendBlock action={action} planText={planText} />
     </article>
   );
+}
+
+
+// =====================================================================
+// Claude AI integration
+// =====================================================================
+
+function ClaudeEvaluationPanel({ report, planText }) {
+  const [streaming, setStreaming] = useState(false);
+  const [text, setText] = useState('');
+  const [err, setErr] = useState('');
+
+  const run = async () => {
+    if (!planText) return;
+    setErr('');
+    setText('');
+    setStreaming(true);
+    try {
+      await streamClaude(
+        {
+          mode: 'evaluate',
+          planText,
+          sourceName: report.sourceName,
+          wordCount: report.wordCount,
+        },
+        (_chunk, full) => setText(full),
+      );
+    } catch (e) {
+      setErr(e.message || 'Claude evaluation failed.');
+    } finally {
+      setStreaming(false);
+    }
+  };
+
+  return (
+    <section
+      aria-labelledby="section-claude-eval"
+      className="principle-card"
+      style={{ borderColor: 'var(--jm-green-deep)', borderLeftWidth: '4px' }}
+    >
+      <div className="flex items-start justify-between gap-3 flex-wrap mb-3">
+        <div>
+          <div
+            className="font-mono text-[11px] uppercase tracking-wider mb-1"
+            style={{ color: 'var(--jm-green-deep)' }}
+          >
+            Claude AI Evaluation
+          </div>
+          <h3
+            id="section-claude-eval"
+            className="font-display text-cb-sea"
+            style={{ fontSize: '20px', fontWeight: 600 }}
+          >
+            Nuanced read of your plan
+          </h3>
+        </div>
+        <button
+          type="button"
+          onClick={run}
+          disabled={streaming || !planText}
+          className="btn btn-gold"
+          aria-busy={streaming}
+        >
+          {streaming ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+              Reading your plan…
+            </>
+          ) : text ? (
+            <>
+              <Sparkles className="w-4 h-4" aria-hidden="true" />
+              Re-run with Claude
+            </>
+          ) : (
+            <>
+              <Sparkles className="w-4 h-4" aria-hidden="true" />
+              Evaluate with Claude
+            </>
+          )}
+        </button>
+      </div>
+      <p className="font-body text-sm text-cb-mute mb-3 leading-relaxed">
+        Goes beyond keyword scoring. Claude reads the full text, names what the plan gets right
+        and what it misses against the seven Blueprint principles, and notes whether the
+        framing is sovereign or imitative.
+      </p>
+      {err && (
+        <div className="font-body text-sm text-cb-red mb-3" role="alert">
+          {err}
+        </div>
+      )}
+      {text && (
+        <div
+          className="font-body text-cb-ink leading-relaxed claude-output"
+          aria-live="polite"
+          style={{ fontSize: '15px' }}
+        >
+          <MarkdownView text={text} />
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ClaudeAmendBlock({ action, planText }) {
+  const [open, setOpen] = useState(false);
+  const [streaming, setStreaming] = useState(false);
+  const [text, setText] = useState('');
+  const [err, setErr] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  const run = async () => {
+    setErr('');
+    setText('');
+    setOpen(true);
+    setStreaming(true);
+    try {
+      await streamClaude(
+        {
+          mode: 'amend',
+          action,
+          planExcerpt: (planText || '').slice(0, 6000),
+        },
+        (_chunk, full) => setText(full),
+      );
+    } catch (e) {
+      setErr(e.message || 'Claude amendment failed.');
+    } finally {
+      setStreaming(false);
+    }
+  };
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch { /* ignore */ }
+  };
+
+  return (
+    <div className="mt-4 pt-4" style={{ borderTop: '1px dashed var(--cb-line)' }}>
+      <button
+        type="button"
+        onClick={run}
+        disabled={streaming}
+        className="btn btn-secondary"
+        style={{ minHeight: '36px', padding: '6px 12px', fontSize: '13px' }}
+        aria-busy={streaming}
+        aria-expanded={open}
+      >
+        {streaming ? (
+          <>
+            <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+            Drafting amendment…
+          </>
+        ) : (
+          <>
+            <Sparkles className="w-4 h-4" aria-hidden="true" />
+            {text ? 'Re-draft with Claude' : 'Draft amendment language with Claude'}
+          </>
+        )}
+      </button>
+      {err && (
+        <div className="font-body text-sm text-cb-red mt-3" role="alert">{err}</div>
+      )}
+      {open && text && (
+        <div className="mt-3">
+          <div
+            className="font-body text-cb-ink leading-relaxed claude-output"
+            aria-live="polite"
+            style={{
+              fontSize: '14px',
+              background: 'var(--jm-green-soft)',
+              padding: '14px 16px',
+              borderLeft: '3px solid var(--jm-green)',
+            }}
+          >
+            <MarkdownView text={text} />
+          </div>
+          <button
+            type="button"
+            onClick={copy}
+            className="btn btn-secondary mt-2"
+            style={{ minHeight: '32px', padding: '4px 10px', fontSize: '12px' }}
+          >
+            <ClipboardPaste className="w-3.5 h-3.5" aria-hidden="true" />
+            {copied ? 'Copied' : 'Copy amendment'}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Tiny Markdown renderer — handles headings, bold, italics, lists, paragraphs.
+// Intentionally minimal: avoids pulling in a full MD library for streaming.
+function MarkdownView({ text }) {
+  const lines = String(text || '').split('\n');
+  const out = [];
+  let para = [];
+  let list = null; // { type: 'ul' | 'ol', items: [] }
+
+  const flushPara = () => {
+    if (para.length) {
+      out.push(<p key={`p-${out.length}`} style={{ margin: '0 0 12px' }}>{inline(para.join(' '))}</p>);
+      para = [];
+    }
+  };
+  const flushList = () => {
+    if (list) {
+      const Tag = list.type;
+      out.push(
+        <Tag key={`l-${out.length}`} style={{ paddingLeft: '20px', margin: '0 0 12px' }}>
+          {list.items.map((it, i) => <li key={i} style={{ marginBottom: '6px' }}>{inline(it)}</li>)}
+        </Tag>
+      );
+      list = null;
+    }
+  };
+
+  for (const raw of lines) {
+    const line = raw.trimEnd();
+    if (!line.trim()) { flushPara(); flushList(); continue; }
+    let m;
+    if ((m = /^#{1,3}\s+(.+)/.exec(line))) {
+      flushPara(); flushList();
+      const level = line.match(/^#+/)[0].length;
+      const sz = level === 1 ? '20px' : level === 2 ? '17px' : '15px';
+      out.push(
+        <div
+          key={`h-${out.length}`}
+          className="font-display text-cb-sea"
+          style={{ fontSize: sz, fontWeight: 600, margin: '14px 0 8px' }}
+        >{m[1]}</div>
+      );
+      continue;
+    }
+    if ((m = /^[-*]\s+(.+)/.exec(line))) {
+      flushPara();
+      if (!list || list.type !== 'ul') { flushList(); list = { type: 'ul', items: [] }; }
+      list.items.push(m[1]);
+      continue;
+    }
+    if ((m = /^\d+[.)]\s+(.+)/.exec(line))) {
+      flushPara();
+      if (!list || list.type !== 'ol') { flushList(); list = { type: 'ol', items: [] }; }
+      list.items.push(m[1]);
+      continue;
+    }
+    flushList();
+    para.push(line);
+  }
+  flushPara(); flushList();
+  return <div>{out}</div>;
+}
+
+function inline(s) {
+  // Render **bold**, *italic*, `code` — return an array of React fragments.
+  const parts = [];
+  let rest = s;
+  let key = 0;
+  const tokens = [
+    { re: /\*\*([^*]+)\*\*/, tag: 'strong' },
+    { re: /\*([^*]+)\*/,       tag: 'em' },
+    { re: /`([^`]+)`/,           tag: 'code' },
+  ];
+  while (rest) {
+    let bestIdx = -1, bestMatch = null, bestTag = null;
+    for (const t of tokens) {
+      const m = t.re.exec(rest);
+      if (m && (bestIdx === -1 || m.index < bestIdx)) {
+        bestIdx = m.index; bestMatch = m; bestTag = t.tag;
+      }
+    }
+    if (!bestMatch) { parts.push(rest); break; }
+    if (bestIdx > 0) parts.push(rest.slice(0, bestIdx));
+    const Tag = bestTag;
+    parts.push(<Tag key={key++}>{bestMatch[1]}</Tag>);
+    rest = rest.slice(bestIdx + bestMatch[0].length);
+  }
+  return parts;
 }

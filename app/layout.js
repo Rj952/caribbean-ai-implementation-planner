@@ -1,4 +1,5 @@
 import './globals.css';
+import ChatPanel from './components/ChatPanel';
 
 export const metadata = {
   title: 'Caribbean AI Implementation Planner',
@@ -37,6 +38,7 @@ export default function RootLayout({ children }) {
           Skip to main content
         </a>
         {children}
+        <ChatPanel />
       </body>
     </html>
   );
