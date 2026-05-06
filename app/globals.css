@@ -1,0 +1,385 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700;9..144,800&family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Neutral system */
+  --cb-ink: #1A1A1A;
+  --cb-slate: #3D3D3D;
+  --cb-mute: #5C6873;
+  --cb-line: #D8D2BD;
+  --cb-sand: #F2EEDF;
+  --cb-surface: #FBF9F2;
+  --cb-paper: #FFFFFF;
+
+  /* Jamaica-primary brand:
+     - black anchors headers & display type
+     - green is the dominant action / link color
+     - gold is the warm accent (focus rings, callouts) */
+  --jm-black: #0B0B0B;
+  --jm-black-soft: #1A1A1A;
+  --jm-green: #009B3A;
+  --jm-green-deep: #007A2D;
+  --jm-green-soft: #E6F5EC;
+  --jm-gold: #FED100;
+  --jm-gold-deep: #C9A100;
+  --jm-gold-soft: #FFF6CC;
+
+  /* Aliases — preserve existing components that use --cb-*.
+     'sea'/'teal' now adopt Jamaica brand. Pure Caribbean blue
+     remains available as --cb-ocean for secondary accent. */
+  --cb-sea: #0B0B0B;
+  --cb-sea-deep: #000000;
+  --cb-teal: #009B3A;
+  --cb-teal-deep: #007A2D;
+  --cb-ocean: #0B2E4F;
+  --cb-ocean-deep: #072037;
+  --cb-aqua: #4FB3BF;
+  --cb-aqua-soft: #E6F5EC;
+  --cb-sun: #FED100;
+  --cb-sun-deep: #C9A100;
+  --cb-sun-soft: #FFF6CC;
+  --cb-coral: #E76F51;
+  --cb-palm: #009B3A;
+  --cb-red: #C8102E;
+}
+
+/* Jamaica flag stripe — used at the top of the header
+   and as a decorative rule on key surfaces. */
+.jm-flag-stripe {
+  height: 4px;
+  width: 100%;
+  background: linear-gradient(
+    to right,
+    var(--jm-black) 0% 33.33%,
+    var(--jm-gold) 33.33% 66.66%,
+    var(--jm-green) 66.66% 100%
+  );
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--cb-surface);
+  color: var(--cb-ink);
+  font-family: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.font-display { font-family: 'Fraunces', Georgia, serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+.font-mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+.font-body { font-family: 'IBM Plex Sans', system-ui, sans-serif; }
+
+/* ----- Accessibility ----- */
+
+/* Skip link — invisible until focused */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  background: var(--cb-sea);
+  color: #fff;
+  padding: 12px 18px;
+  z-index: 1000;
+  font-weight: 600;
+  text-decoration: none;
+  border-bottom-right-radius: 4px;
+}
+.skip-link:focus {
+  left: 0;
+}
+
+/* Visible focus indicator on every focusable element */
+:focus-visible {
+  outline: 3px solid var(--cb-sun);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* sr-only utility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Honour reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ----- Form controls ----- */
+input[type="text"],
+input[type="date"],
+input[type="number"],
+textarea,
+select {
+  background: var(--cb-paper);
+  border: 1px solid var(--cb-line);
+  padding: 12px 14px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 15px;
+  color: var(--cb-ink);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  width: 100%;
+  border-radius: 2px;
+}
+input[type="text"]:focus,
+input[type="date"]:focus,
+input[type="number"]:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--cb-teal);
+  background: var(--cb-paper);
+  box-shadow: 0 0 0 3px rgba(27, 110, 124, 0.18);
+}
+textarea {
+  resize: vertical;
+  min-height: 80px;
+  line-height: 1.6;
+}
+::placeholder {
+  color: var(--cb-mute);
+  opacity: 0.7;
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  background: var(--cb-line);
+  border-radius: 3px;
+  outline: none;
+  width: 100%;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--cb-sun);
+  cursor: pointer;
+  border: 2px solid #FFFFFF;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--cb-sun);
+  cursor: pointer;
+  border: 2px solid #FFFFFF;
+}
+
+/* ----- Buttons ----- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 18px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.05s ease;
+  border: 1px solid transparent;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  min-height: 44px; /* WCAG 2.5.5 target size */
+}
+.btn:active {
+  transform: translateY(1px);
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+/* Primary action — Jamaica green */
+.btn-primary {
+  background: var(--jm-green);
+  color: #FFFFFF;
+}
+.btn-primary:hover:not(:disabled) {
+  background: var(--jm-green-deep);
+}
+/* Secondary — outlined ink with gold focus accent */
+.btn-secondary {
+  background: transparent;
+  color: var(--jm-black);
+  border-color: var(--cb-line);
+}
+.btn-secondary:hover:not(:disabled) {
+  background: var(--jm-gold-soft);
+  border-color: var(--jm-gold);
+}
+/* Gold accent — used for emphasis CTAs (download, evaluate) */
+.btn-gold {
+  background: var(--jm-gold);
+  color: var(--jm-black);
+  border-color: var(--jm-gold-deep);
+}
+.btn-gold:hover:not(:disabled) {
+  background: var(--jm-gold-deep);
+  color: var(--jm-black);
+}
+/* Black anchor — used sparingly for heavyweight CTAs */
+.btn-ink {
+  background: var(--jm-black);
+  color: #FFFFFF;
+}
+.btn-ink:hover:not(:disabled) {
+  background: var(--jm-black-soft);
+}
+.btn-coral {
+  background: var(--cb-coral);
+  color: var(--cb-ink);
+}
+
+/* ----- Editorial elements ----- */
+.rule {
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--cb-sun), transparent);
+  margin: 32px 0;
+  border: 0;
+}
+
+.step-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.principle-card {
+  background: var(--cb-paper);
+  border: 1px solid #E5DFC8;
+  padding: 20px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  border-radius: 2px;
+}
+.principle-card:hover {
+  border-color: var(--cb-sun);
+  box-shadow: 0 2px 12px rgba(11, 46, 79, 0.04);
+}
+
+.checkbox-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid #E5DFC8;
+  background: var(--cb-paper);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+  border-radius: 2px;
+}
+.checkbox-row:hover {
+  border-color: var(--cb-sun);
+  background: var(--cb-surface);
+}
+.checkbox-row.selected {
+  border-color: var(--cb-teal);
+  background: var(--cb-aqua-soft);
+}
+
+.gdp-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid var(--cb-line);
+  background: var(--cb-paper);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+  font-size: 13px;
+  border-radius: 2px;
+  min-height: 36px;
+}
+.gdp-tag:hover {
+  border-color: var(--cb-sun);
+}
+.gdp-tag.active {
+  background: var(--cb-sea);
+  color: #FFFFFF;
+  border-color: var(--cb-sea);
+}
+
+details > summary {
+  list-style: none;
+  cursor: pointer;
+}
+details > summary::-webkit-details-marker { display: none; }
+
+/* Status badges (evaluator) */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: 2px;
+}
+/* Coverage badges */
+.badge-strong   { background: rgba(0, 155, 58, 0.14);  color: #006B27; }
+.badge-partial  { background: rgba(254, 209, 0, 0.22); color: #7A6300; }
+.badge-absent   { background: rgba(200, 16, 46, 0.12); color: #9D0D24; }
+
+/* Priority badges — 4-tier scale: Critical / High / Medium / Low */
+.badge-critical { background: rgba(11, 11, 11, 0.92);   color: #FED100; }
+.badge-high     { background: rgba(200, 16, 46, 0.14);  color: #9D0D24; }
+.badge-medium   { background: rgba(254, 209, 0, 0.28);  color: #7A6300; }
+.badge-low      { background: rgba(0, 155, 58, 0.16);   color: #006B27; }
+
+/* Score bar — Jamaica green to gold gradient */
+.score-bar {
+  height: 8px;
+  background: var(--cb-line);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.score-bar-fill {
+  height: 100%;
+  background: linear-gradient(to right, var(--jm-green), var(--jm-gold));
+  transition: width 0.6s ease;
+}
+
+/* Print styles — used by the legacy "Print / Save as PDF" path as a fallback */
+@media print {
+  body {
+    background: #FFFFFF;
+  }
+  .no-print { display: none !important; }
+}

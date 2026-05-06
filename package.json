@@ -1,0 +1,36 @@
+{
+  "name": "caribbean-ai-implementation-planner",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Caribbean AI Implementation Planner — a Jamaica-branded, accessible web app that turns the Caribbean AI Deployment Blueprint (Jowallah, 2026) into a country-specific working policy document, with plan upload, AI-readiness evaluation, and action plan generation.",
+  "author": "Dr. Rohan Jowallah",
+  "license": "MIT",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "14.2.15",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "lucide-react": "^0.453.0",
+    "docx": "^8.5.0",
+    "file-saver": "^2.0.5",
+    "jspdf": "^2.5.2",
+    "jspdf-autotable": "^3.8.4",
+    "mammoth": "^1.8.0",
+    "pdfjs-dist": "4.4.168"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.20",
+    "eslint": "^8.57.1",
+    "eslint-config-next": "14.2.15",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.13"
+  },
+  "engines": {
+    "node": ">=18.17.0"
+  }
+}
