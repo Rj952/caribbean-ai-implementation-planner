@@ -1,5 +1,6 @@
 import './globals.css';
 import ChatPanel from './components/ChatPanel';
+import AccessGate from './components/AccessGate';
 
 export const metadata = {
   title: 'Caribbean AI Implementation Planner',
@@ -37,8 +38,10 @@ export default function RootLayout({ children }) {
         <a href="#main-content" className="skip-link">
           Skip to main content
         </a>
-        {children}
-        <ChatPanel />
+        <AccessGate>
+          {children}
+          <ChatPanel />
+        </AccessGate>
       </body>
     </html>
   );

@@ -12,6 +12,7 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { PROMPTS, MODELS, MAX_TOKENS } from '@/lib/claude-prompts';
+import { getSessionFromRequest } from '@/lib/auth';
 
 // Use Node runtime so we can stream and read env reliably.
 export const runtime = 'nodejs';
@@ -86,6 +87,13 @@ function buildMessages(mode, body) {
 }
 
 export async function POST(req) {
+  // Require a valid session cookie before forwarding to Claude.
+  // This protects the API budget from anonymous traffic.
+  const session = getSessionFromRequest(req);
+  if (!session) {
+    return bad('Access required. Sign in with your access code.', 401);
+  }
+
   if (!process.env.ANTHROPIC_API_KEY) {
     return bad(
       'ANTHROPIC_API_KEY is not configured on the server. ' +
